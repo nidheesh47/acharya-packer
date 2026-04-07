@@ -1,0 +1,35 @@
+import { Sparkles } from "lucide-react";
+
+export function PerformanceSummary({ agentCount, totalScans, avgScansPerAgent }) {
+  return (
+    <div className="mt-8 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl shadow-md p-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-white/20 rounded-lg">
+            <Sparkles className="h-5 w-5 text-white" />
+          </div>
+          <div>
+            <h3 className="text-lg font-bold text-white mb-1">Performance Summary</h3>
+            <p className="text-blue-100 text-sm">
+              {agentCount} agent{agentCount !== 1 ? 's' : ''} found with {totalScans.toLocaleString()} total scans
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-6">
+          <div className="text-center">
+            <div className="text-2xl font-bold text-white">{agentCount}</div>
+            <div className="text-xs text-blue-200">Agents</div>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl font-bold text-white">{totalScans.toLocaleString()}</div>
+            <div className="text-xs text-blue-200">Total Scans</div>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl font-bold text-white">{avgScansPerAgent.toLocaleString()}</div>
+            <div className="text-xs text-blue-200">Avg/Agent</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

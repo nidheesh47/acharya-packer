@@ -55,6 +55,8 @@ app.use(cors(corsOptions));
 // ==============================
 // Standard JSON parser, but preserve raw body for webhooks
 app.use("/api/webhooks", express.raw({ type: "*/*" }));
+
+// ✅ Webhook routes
 app.use("/api/webhooks", webhookRoutes);
 
 // ==============================

@@ -1,9 +1,10 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import apiRoutes from "./routes/v1/api.routes.js";
 
-// Load environment variables
+import apiRoutes from "./routes/v1/api.routes.js";
+import webhookRoutes from "./routes/webhook/webhook.routes.js";
+
 dotenv.config();
 
 const app = express();
@@ -14,56 +15,41 @@ const app = express();
 const rawOrigins = process.env.ALLOWED_ORIGINS;
 const isDev = process.env.NODE_ENV === "development";
 
-// Determine allowed origins
 let allowedOrigins = [];
+
 if (rawOrigins) {
   allowedOrigins = rawOrigins.split(",").map((origin) => origin.trim());
 } else if (isDev) {
-  // ✅ Allow your frontend in development
   allowedOrigins = ["http://localhost:5173"];
 } else {
-  console.warn(
-    "⚠️ ALLOWED_ORIGINS not set. CORS will block all cross-origin requests.",
-  );
+  console.warn("⚠️ ALLOWED_ORIGINS not set.");
 }
 
 const corsOptions = {
   origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps or curl)
     if (!origin) return callback(null, true);
 
-    // Check if the origin is allowed
     if (allowedOrigins.includes(origin)) {
       return callback(null, true);
     } else {
-      const msg = `CORS blocked request from origin: ${origin}`;
-      console.warn(msg);
-      return callback(new Error(msg), false);
+      return callback(new Error(`CORS blocked: ${origin}`), false);
     }
   },
-  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
-  credentials: true, // ✅ Required for cookies / auth headers
-  maxAge: 86400, // 24 hours
+  credentials: true,
 };
 
-// Apply CORS middleware (handles preflight automatically)
 app.use(cors(corsOptions));
 
 // ==============================
-// BODY PARSER
+// 🔴 WEBHOOK (RAW BODY) — MUST COME FIRST
 // ==============================
-// Standard JSON parser, but preserve raw body for webhooks
-app.use(
-  express.json({
-    verify: (req, res, buf) => {
-      // Save raw body for webhook endpoints
-      if (req.originalUrl && req.originalUrl.includes("/webhooks")) {
-        req.rawBody = buf;
-      }
-    },
-  }),
-);
+app.use("/api/webhooks", express.raw({ type: "*/*" }));
+app.use("/api/webhooks", webhookRoutes);
+
+// ==============================
+// NORMAL JSON PARSER (AFTER WEBHOOK)
+// ==============================
+app.use(express.json());
 
 // ==============================
 // HEALTH CHECK
@@ -78,27 +64,18 @@ app.get("/", (req, res) => {
 app.use("/api", apiRoutes);
 
 // ==============================
-// ERROR HANDLING (Optional but recommended)
+// ERROR HANDLER
 // ==============================
 app.use((err, req, res, next) => {
-  console.error("Server error:", err);
-  if (err.message.startsWith("CORS blocked")) {
-    // CORS errors should return a 403 with a specific message
-    return res.status(403).json({ error: err.message });
-  }
-  res.status(500).json({ error: "Internal server error" });
+  console.error("Server error:", err.message);
+  res.status(500).json({ error: err.message });
 });
 
 // ==============================
-// START SERVER (if not used as a module)
+// START SERVER
 // ==============================
 const PORT = process.env.PORT || 5000;
-if (process.env.NODE_ENV !== "test") {
-  app.listen(PORT, () => {
-    console.log(`✅ Server running on port ${PORT}`);
-    console.log(`   Environment: ${process.env.NODE_ENV || "development"}`);
-    console.log(`   Allowed origins: ${allowedOrigins.join(", ") || "none"}`);
-  });
-}
 
-export default app;
+app.listen(PORT, () => {
+  console.log(`✅ Server running on port ${PORT}`);
+});
